@@ -282,6 +282,8 @@ void VendorInterface::Close() {
     dlclose(lib_handle_);
     lib_handle_ = nullptr;
   }
+
+  ALOGD("%s vendor library unloaded", __func__);
 }
 
 size_t VendorInterface::Send(uint8_t type, const uint8_t* data, size_t length) {
