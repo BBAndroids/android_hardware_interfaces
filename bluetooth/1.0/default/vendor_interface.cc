@@ -142,23 +142,6 @@ namespace hardware {
 namespace bluetooth {
 namespace V1_0 {
 namespace implementation {
-
-class FirmwareStartupTimer {
- public:
-  FirmwareStartupTimer() : start_time_(std::chrono::steady_clock::now()) {}
-
-  ~FirmwareStartupTimer() {
-    std::chrono::duration<double> duration =
-        std::chrono::steady_clock::now() - start_time_;
-    double s = duration.count();
-    if (s == 0) return;
-    ALOGI("Firmware configured in %.3fs", s);
-  }
-
- private:
-  std::chrono::steady_clock::time_point start_time_;
-};
-
 bool VendorInterface::Initialize(
     InitializeCompleteCallback initialize_complete_cb,
     PacketReadCallback event_cb, PacketReadCallback acl_cb,
@@ -267,7 +250,6 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
   lpm_wake_deasserted = true;
 
   // Start configuring the firmware
-  firmware_startup_timer_ = new FirmwareStartupTimer();
   lib_interface_->op(BT_VND_OP_FW_CFG, nullptr);
 
   return true;
@@ -301,11 +283,6 @@ void VendorInterface::Close() {
   if (lib_handle_ != nullptr) {
     dlclose(lib_handle_);
     lib_handle_ = nullptr;
-  }
-
-  if (firmware_startup_timer_ != nullptr) {
-    delete firmware_startup_timer_;
-    firmware_startup_timer_ = nullptr;
   }
 }
 

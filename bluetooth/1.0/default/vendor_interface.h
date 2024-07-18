@@ -65,8 +65,6 @@ class VendorInterface {
   hci::HciProtocol* hci_ = nullptr;
 
   PacketReadCallback event_cb_;
-
-  FirmwareStartupTimer* firmware_startup_timer_ = nullptr;
 };
 
 }  // namespace implementation
