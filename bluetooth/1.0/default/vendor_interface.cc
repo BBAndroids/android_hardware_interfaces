@@ -87,6 +87,11 @@ uint8_t transmit_cb(uint16_t opcode, void* buffer, tINT_CMD_CBACK callback) {
   return true;
 }
 
+void firmware_loaded_cb(bt_vendor_op_result_t result) {
+  ALOGV("%s result: %d", __func__, result);
+  VendorInterface::get()->OnFirmwareLoaded(result);
+}
+
 void firmware_config_cb(bt_vendor_op_result_t result) {
   ALOGV("%s result: %d", __func__, result);
   VendorInterface::get()->OnFirmwareConfigured(result);
@@ -128,7 +133,7 @@ const bt_vendor_callbacks_t lib_callbacks = {
     sizeof(lib_callbacks), firmware_config_cb, sco_config_cb,
     low_power_mode_cb,     sco_audiostate_cb,  buffer_alloc_cb,
     buffer_free_cb,        transmit_cb,        epilog_cb,
-    a2dp_offload_cb};
+    a2dp_offload_cb,       firmware_loaded_cb};
 
 }  // namespace
 
@@ -244,9 +249,6 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
     hci_ = mct_hci;
   }
 
-  // Initially, the power management is off.
-  lpm_wake_deasserted = true;
-
   // Start configuring the firmware
   lib_interface_->op(BT_VND_OP_FW_CFG, nullptr);
 
@@ -304,28 +306,26 @@ size_t VendorInterface::Send(uint8_t type, const uint8_t* data, size_t length) {
   return hci_->Send(type, data, length);
 }
 
-void VendorInterface::OnFirmwareConfigured(uint8_t result) {
+void VendorInterface::OnFirmwareLoaded(uint8_t result) {
   ALOGD("%s result: %d", __func__, result);
 
-  if (firmware_startup_timer_ != nullptr) {
-    delete firmware_startup_timer_;
-    firmware_startup_timer_ = nullptr;
-  }
+  bt_vendor_lpm_mode_t mode = BT_VND_LPM_ENABLE;
+  lib_interface_->op(BT_VND_OP_LPM_SET_MODE, &mode);
 
+  lib_interface_->op(BT_VND_OP_GET_LPM_IDLE_TIMEOUT, &lpm_timeout_ms);
+
+  fd_watcher_.ConfigureTimeout(std::chrono::milliseconds(lpm_timeout_ms),
+                                 [this]() { OnTimeout(); });
+}
+
+void VendorInterface::OnFirmwareConfigured(uint8_t result) {
+  ALOGD("%s result: %d", __func__, result);
   if (initialize_complete_cb_ != nullptr) {
     initialize_complete_cb_(result == 0);
     initialize_complete_cb_ = nullptr;
   }
 
-  lib_interface_->op(BT_VND_OP_GET_LPM_IDLE_TIMEOUT, &lpm_timeout_ms);
-  ALOGI("%s: lpm_timeout_ms %d", __func__, lpm_timeout_ms);
-
-  bt_vendor_lpm_mode_t mode = BT_VND_LPM_ENABLE;
-  lib_interface_->op(BT_VND_OP_LPM_SET_MODE, &mode);
-
-  ALOGD("%s Calling StartLowPowerWatchdog()", __func__);
-  fd_watcher_.ConfigureTimeout(std::chrono::milliseconds(lpm_timeout_ms),
-                               [this]() { OnTimeout(); });
+  lpm_wake_deasserted = true;
 }
 
 void VendorInterface::OnTimeout() {
