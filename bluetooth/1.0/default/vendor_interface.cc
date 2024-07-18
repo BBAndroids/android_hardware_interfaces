@@ -43,11 +43,6 @@ struct {
   uint16_t opcode;
 } internal_command;
 
-// True when LPM is not enabled yet or wake is not asserted.
-bool lpm_wake_deasserted;
-uint32_t lpm_timeout_ms;
-bool recent_activity_flag;
-
 VendorInterface* g_vendor_interface = nullptr;
 std::mutex wakeup_mutex_;
 
@@ -171,6 +166,9 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
                            PacketReadCallback sco_cb,
                            PacketReadCallback iso_cb) {
   initialize_complete_cb_ = initialize_complete_cb;
+  lpm_wake_deasserted = false;
+  recent_activity_flag = false;
+  lpm_timeout_ms = 0;
 
   // Initialize vendor interface
 

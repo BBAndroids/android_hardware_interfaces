@@ -65,6 +65,11 @@ class VendorInterface {
   hci::HciProtocol* hci_ = nullptr;
 
   PacketReadCallback event_cb_;
+
+  // True when LPM is not enabled yet or wake is not asserted.
+  bool lpm_wake_deasserted;
+  bool recent_activity_flag;
+  uint32_t lpm_timeout_ms;
 };
 
 }  // namespace implementation
