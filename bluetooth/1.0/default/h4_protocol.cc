@@ -87,6 +87,13 @@ void H4Protocol::OnDataReady(int fd) {
                          static_cast<unsigned int>(bytes_read));
       }
     }
+    
+    if (buffer[0] == 0)
+    {
+      ALOGE("%s: filtering out bougus packet", __func__);
+      return OnDataReady(fd);
+    }
+    
     hci_packet_type_ = static_cast<HciPacketType>(buffer[0]);
     if (hci_packet_type_ != HCI_PACKET_TYPE_ACL_DATA &&
         hci_packet_type_ != HCI_PACKET_TYPE_SCO_DATA &&
